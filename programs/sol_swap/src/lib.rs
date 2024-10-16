@@ -9,17 +9,6 @@ pub mod sol_pool {
     pub fn initialize_pool(ctx: Context<InitializePool>, sol_amount: u64) -> Result<()> {
         msg!("Initializing SOL pool");
 
-        // Ensure the PDA matches the provided pool_sol_account
-        let (pool_sol_pda, _bump) = Pubkey::find_program_address(
-            &[b"pool_sol_account", ctx.accounts.user.key().as_ref()],
-            ctx.program_id,
-        );
-        require_keys_eq!(
-            pool_sol_pda,
-            ctx.accounts.pool_sol_account.key(),
-            ErrorCode::InvalidPda
-        );
-
         // Transfer SOL from the user to the pool's SOL account using SystemProgram::transfer
         let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
             &ctx.accounts.user.key(),
@@ -43,17 +32,6 @@ pub mod sol_pool {
 
     pub fn deposit_sol(ctx: Context<DepositSol>, sol_amount: u64) -> Result<()> {
         msg!("Depositing SOL into pool");
-
-        // Ensure the PDA matches the provided pool_sol_account
-        let (pool_sol_pda, _bump) = Pubkey::find_program_address(
-            &[b"pool_sol_account", ctx.accounts.user.key().as_ref()],
-            ctx.program_id,
-        );
-        require_keys_eq!(
-            pool_sol_pda,
-            ctx.accounts.pool_sol_account.key(),
-            ErrorCode::InvalidPda
-        );
 
         // Transfer SOL from user to pool using SystemProgram::transfer
         let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
@@ -87,8 +65,12 @@ pub struct InitializePool<'info> {
         space = 8 + 8,
     )]
     pub pool_account: Account<'info, PoolAccount>,
-    /// CHECK: We are verifying the PDA manually
-    #[account(mut)]
+    /// CHECK: We are auto-verifying this PDA with seeds and bump
+    #[account(
+        mut,
+        seeds = [b"pool_sol_account", user.key().as_ref()],
+        bump
+    )]
     pub pool_sol_account: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -99,8 +81,12 @@ pub struct DepositSol<'info> {
     pub user: Signer<'info>,
     #[account(mut)]
     pub pool_account: Account<'info, PoolAccount>,
-    /// CHECK: We are verifying the PDA manually
-    #[account(mut)]
+    /// CHECK: We are auto-verifying this PDA with seeds and bump
+    #[account(
+        mut,
+        seeds = [b"pool_sol_account", user.key().as_ref()],
+        bump
+    )]
     pub pool_sol_account: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -108,10 +94,4 @@ pub struct DepositSol<'info> {
 #[account]
 pub struct PoolAccount {
     pub sol_balance: u64,
-}
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("The provided PDA does not match the expected PDA.")]
-    InvalidPda,
 }

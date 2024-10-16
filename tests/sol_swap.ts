@@ -18,15 +18,12 @@ describe("sol_pool", () => {
   const additionalSolAmount = 500_000_000; // 0.5 SOL in lamports
 
   before(async () => {
-    // Derive the PDA for the pool's SOL account
     [poolSolAccount] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from("pool_sol_account"), wallet.publicKey.toBuffer()],
       program.programId
     );
 
-    // Generate a new keypair for the pool account
     poolAccount = anchor.web3.Keypair.generate();
-
   });
 
   it("Initializes the pool with SOL", async () => {
@@ -35,7 +32,6 @@ describe("sol_pool", () => {
       .accounts({
         user: wallet.publicKey,
         poolAccount: poolAccount.publicKey,
-        poolSolAccount: poolSolAccount,
       })
       .signers([poolAccount])
       .rpc();
@@ -53,7 +49,6 @@ describe("sol_pool", () => {
       .accounts({
         user: wallet.publicKey,
         poolAccount: poolAccount.publicKey,
-        poolSolAccount: poolSolAccount,
       })
       .rpc();
 

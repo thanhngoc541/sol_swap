@@ -47,8 +47,13 @@ pub mod sol_pool {
             ],
         )?;
 
-        // Update pool balance
-        ctx.accounts.pool_account.sol_balance += sol_amount;
+        let new_balance = ctx
+            .accounts
+            .pool_account
+            .sol_balance
+            .checked_add(sol_amount)
+            .ok_or(ErrorCode::Overflow)?;
+        ctx.accounts.pool_account.sol_balance = new_balance;
 
         msg!("Deposited {} lamports of SOL into the pool", sol_amount);
         Ok(())
@@ -99,7 +104,7 @@ pub struct InitializePool<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(
-        init,
+        init_if_needed,
         payer = user,
         space = 8 + 8,
     )]
@@ -110,7 +115,7 @@ pub struct InitializePool<'info> {
         seeds = [b"pool_sol_account", user.key().as_ref()],
         bump
     )]
-    pub pool_sol_account: AccountInfo<'info>,
+    pub pool_sol_account: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -126,7 +131,7 @@ pub struct DepositSol<'info> {
         seeds = [b"pool_sol_account", user.key().as_ref()],
         bump
     )]
-    pub pool_sol_account: AccountInfo<'info>,
+    pub pool_sol_account: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -142,7 +147,7 @@ pub struct WithdrawSol<'info> {
         seeds = [b"pool_sol_account", user.key().as_ref()],
         bump
     )]
-    pub pool_sol_account: AccountInfo<'info>,
+    pub pool_sol_account: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -155,4 +160,6 @@ pub struct PoolAccount {
 pub enum ErrorCode {
     #[msg("Insufficient funds in the pool.")]
     InsufficientFunds,
+    #[msg("Overflow occurred.")]
+    Overflow,
 }

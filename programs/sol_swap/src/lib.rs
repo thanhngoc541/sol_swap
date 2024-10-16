@@ -4,11 +4,21 @@ declare_id!("4M7DxWhHoXJopYBCB6SRJzygd6qYK8YfEehSj92FFVZR");
 
 #[program]
 pub mod sol_pool {
-
     use super::*;
 
     pub fn initialize_pool(ctx: Context<InitializePool>, sol_amount: u64) -> Result<()> {
         msg!("Initializing SOL pool");
+
+        // Ensure the PDA matches the provided pool_sol_account
+        let (pool_sol_pda, _bump) = Pubkey::find_program_address(
+            &[b"pool_sol_account", ctx.accounts.user.key().as_ref()],
+            ctx.program_id,
+        );
+        require_keys_eq!(
+            pool_sol_pda,
+            ctx.accounts.pool_sol_account.key(),
+            ErrorCode::InvalidPda
+        );
 
         // Transfer SOL from the user to the pool's SOL account using SystemProgram::transfer
         let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
@@ -33,6 +43,17 @@ pub mod sol_pool {
 
     pub fn deposit_sol(ctx: Context<DepositSol>, sol_amount: u64) -> Result<()> {
         msg!("Depositing SOL into pool");
+
+        // Ensure the PDA matches the provided pool_sol_account
+        let (pool_sol_pda, _bump) = Pubkey::find_program_address(
+            &[b"pool_sol_account", ctx.accounts.user.key().as_ref()],
+            ctx.program_id,
+        );
+        require_keys_eq!(
+            pool_sol_pda,
+            ctx.accounts.pool_sol_account.key(),
+            ErrorCode::InvalidPda
+        );
 
         // Transfer SOL from user to pool using SystemProgram::transfer
         let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
@@ -59,33 +80,38 @@ pub mod sol_pool {
 #[derive(Accounts)]
 pub struct InitializePool<'info> {
     #[account(mut)]
-    pub user: Signer<'info>, // User who owns the SOL and signs the transaction
+    pub user: Signer<'info>,
     #[account(
         init,
         payer = user,
-        space = 8 + 8, // Space for the sol_balance field
+        space = 8 + 8,
     )]
     pub pool_account: Account<'info, PoolAccount>,
-    /// CHECK: This is a native SOL account, hence we use AccountInfo and directly handle lamports.
+    /// CHECK: We are verifying the PDA manually
     #[account(mut)]
-    pub pool_sol_account: AccountInfo<'info>, // This will store SOL
+    pub pool_sol_account: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
 pub struct DepositSol<'info> {
     #[account(mut)]
-    pub user: Signer<'info>, // User who deposits SOL into the pool
+    pub user: Signer<'info>,
     #[account(mut)]
     pub pool_account: Account<'info, PoolAccount>,
-    /// CHECK: This is a native SOL account, hence we use AccountInfo and directly handle lamports.
+    /// CHECK: We are verifying the PDA manually
     #[account(mut)]
-    pub pool_sol_account: AccountInfo<'info>, // This will store SOL
+    pub pool_sol_account: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
 #[account]
 pub struct PoolAccount {
-    pub sol_balance: u64, // The amount of SOL stored in the pool
+    pub sol_balance: u64,
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("The provided PDA does not match the expected PDA.")]
+    InvalidPda,
 }

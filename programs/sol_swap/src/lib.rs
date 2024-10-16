@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("4M7DxWhHoXJopYBCB6SRJzygd6qYK8YfEehSj92FFVZR");
+declare_id!("9jLswiME9Pz1umwhaf24awUCcbmUYDXQuvqkGnCUcM5w");
 
 #[program]
 pub mod sol_pool {
@@ -107,6 +107,8 @@ pub struct InitializePool<'info> {
         init_if_needed,
         payer = user,
         space = 8 + 8,
+        seeds = [b"pool_account", user.key().as_ref()],
+        bump
     )]
     pub pool_account: Account<'info, PoolAccount>,
     /// CHECK: We are auto-verifying this PDA with seeds and bump
@@ -123,7 +125,11 @@ pub struct InitializePool<'info> {
 pub struct DepositSol<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"pool_account", user.key().as_ref()],
+        bump
+    )]
     pub pool_account: Account<'info, PoolAccount>,
     /// CHECK: We are auto-verifying this PDA with seeds and bump
     #[account(
@@ -139,7 +145,11 @@ pub struct DepositSol<'info> {
 pub struct WithdrawSol<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"pool_account", user.key().as_ref()],
+        bump
+    )]
     pub pool_account: Account<'info, PoolAccount>,
     /// CHECK: We are auto-verifying this PDA with seeds and bump
     #[account(

@@ -18,27 +18,30 @@ describe("sol_pool", () => {
   const depositAmount = 500_000_000; // 0.5 SOL in lamports
   const withdrawAmount = 300_000_000;
   before(async () => {
-    [poolSolAccount] = await anchor.web3.PublicKey.findProgramAddress(
+    [poolSolAccount] = anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from("pool_sol_account"), wallet.publicKey.toBuffer()],
       program.programId
     );
 
-    poolAccount = anchor.web3.Keypair.generate();
+    [poolAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("pool_account"), provider.wallet.publicKey.toBuffer()],
+      program.programId,
+    );
   });
+
+
 
   it("Initializes the pool with SOL", async () => {
     const tx = await program.methods
       .initializePool(new anchor.BN(solAmount))
       .accounts({
         user: wallet.publicKey,
-        poolAccount: poolAccount.publicKey,
       })
-      .signers([poolAccount])
       .rpc();
 
     console.log("Transaction signature for initializing pool:", tx);
 
-    const poolData = await program.account.poolAccount.fetch(poolAccount.publicKey);
+    const poolData = await program.account.poolAccount.fetch(poolAccount);
     expect(poolData.solBalance.toNumber()).to.equal(solAmount);
     console.log("Test passed: Pool initialized with correct SOL balance.");
   });
@@ -48,13 +51,12 @@ describe("sol_pool", () => {
       .depositSol(new anchor.BN(depositAmount))
       .accounts({
         user: wallet.publicKey,
-        poolAccount: poolAccount.publicKey,
       })
       .rpc();
 
     console.log("Transaction signature for deposit:", tx);
 
-    const poolData = await program.account.poolAccount.fetch(poolAccount.publicKey);
+    const poolData = await program.account.poolAccount.fetch(poolAccount);
     expect(poolData.solBalance.toNumber()).to.equal(solAmount + depositAmount);
     console.log("Test passed: Additional SOL deposited into the pool.");
   });
@@ -71,14 +73,13 @@ describe("sol_pool", () => {
       .withdrawSol(new anchor.BN(withdrawAmount))
       .accounts({
         user: wallet.publicKey,
-        poolAccount: poolAccount.publicKey,
       })
       .rpc();
 
     console.log("Transaction signature for withdrawal:", tx);
 
     // Fetch and validate the updated pool state
-    const poolData = await program.account.poolAccount.fetch(poolAccount.publicKey);
+    const poolData = await program.account.poolAccount.fetch(poolAccount);
     expect(poolData.solBalance.toNumber()).to.equal(solAmount + depositAmount - withdrawAmount);
     console.log("Test passed: SOL successfully withdrawn from the pool.");
 

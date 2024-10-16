@@ -3,10 +3,9 @@
 [features]
 resolution = true
 skip-lint = false
-seeds = true
 
 [programs.localnet]
-sol_swap = "4M7DxWhHoXJopYBCB6SRJzygd6qYK8YfEehSj92FFVZR"
+sol_swap = "9jLswiME9Pz1umwhaf24awUCcbmUYDXQuvqkGnCUcM5w"
 
 [registry]
 url = "https://api.apr.dev"

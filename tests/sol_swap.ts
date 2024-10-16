@@ -15,7 +15,7 @@ describe("sol_pool", () => {
   // Test key accounts
   let poolSolAccount: anchor.web3.PublicKey;
   let poolAccount: anchor.web3.Keypair;
-
+  let additionalSolAmount = 500_000_000; // 0.5 SOL in lamports
   const solAmount = 1_000_000_000; // 1 SOL in lamports
 
   before(async () => {
@@ -24,6 +24,8 @@ describe("sol_pool", () => {
 
     // Create pool account to store pool information
     poolAccount = anchor.web3.Keypair.generate();
+
+
   });
 
   it("Initializes the pool with SOL", async () => {
@@ -50,7 +52,6 @@ describe("sol_pool", () => {
   });
 
   it("Deposits more SOL into the pool", async () => {
-    const additionalSolAmount = 500_000_000; // 0.5 SOL in lamports
 
     // Deposit additional SOL into the pool
     const tx = await program.methods
@@ -71,6 +72,9 @@ describe("sol_pool", () => {
     expect(poolData.solBalance.toNumber()).to.equal(solAmount + additionalSolAmount);
 
     console.log("Test passed: Additional SOL deposited into the pool.");
+
+    const poolSolBalance = await connection.getBalance(poolSolAccount);
+
   });
 
   it("Fetches all pool accounts", async () => {
@@ -78,4 +82,19 @@ describe("sol_pool", () => {
     console.log("All pool accounts:", accounts);
     expect(accounts.length).to.be.greaterThan(0);
   });
+  it("Checks the balance of poolSolAccount", async () => {
+    // Fetch the balance of the poolSolAccount
+    const poolSolBalance = await connection.getBalance(poolSolAccount);
+
+    console.log("Current poolSolAccount balance:", poolSolBalance);
+
+    // Optionally, you can add an assertion to check if the balance is as expected
+    // For example, after the initializePool and depositSol, the expected balance
+    const expectedBalance = solAmount + additionalSolAmount;
+    expect(poolSolBalance).to.equal(expectedBalance);
+
+    console.log("Test passed: poolSolAccount balance is correct.");
+  });
+
+
 });

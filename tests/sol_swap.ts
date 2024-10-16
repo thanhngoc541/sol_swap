@@ -15,8 +15,8 @@ describe("sol_pool", () => {
   let poolSolAccount;
   let poolAccount;
   const solAmount = 1_000_000_000; // 1 SOL in lamports
-  const additionalSolAmount = 500_000_000; // 0.5 SOL in lamports
-
+  const depositAmount = 500_000_000; // 0.5 SOL in lamports
+  const withdrawAmount = 300_000_000;
   before(async () => {
     [poolSolAccount] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from("pool_sol_account"), wallet.publicKey.toBuffer()],
@@ -45,7 +45,7 @@ describe("sol_pool", () => {
 
   it("Deposits more SOL into the pool", async () => {
     const tx = await program.methods
-      .depositSol(new anchor.BN(additionalSolAmount))
+      .depositSol(new anchor.BN(depositAmount))
       .accounts({
         user: wallet.publicKey,
         poolAccount: poolAccount.publicKey,
@@ -55,13 +55,43 @@ describe("sol_pool", () => {
     console.log("Transaction signature for deposit:", tx);
 
     const poolData = await program.account.poolAccount.fetch(poolAccount.publicKey);
-    expect(poolData.solBalance.toNumber()).to.equal(solAmount + additionalSolAmount);
+    expect(poolData.solBalance.toNumber()).to.equal(solAmount + depositAmount);
     console.log("Test passed: Additional SOL deposited into the pool.");
   });
 
-  it("Checks the balance of poolSolAccount", async () => {
+  it("Checks the balance of poolSolAccount after deposited", async () => {
     const poolSolBalance = await connection.getBalance(poolSolAccount);
-    const expectedBalance = solAmount + additionalSolAmount;
+    const expectedBalance = solAmount + depositAmount;
+    expect(poolSolBalance).to.equal(expectedBalance);
+    console.log("Test passed: poolSolAccount balance is correct.");
+  });
+
+  it("Withdraws SOL from the pool", async () => {
+    const tx = await program.methods
+      .withdrawSol(new anchor.BN(withdrawAmount))
+      .accounts({
+        user: wallet.publicKey,
+        poolAccount: poolAccount.publicKey,
+      })
+      .rpc();
+
+    console.log("Transaction signature for withdrawal:", tx);
+
+    // Fetch and validate the updated pool state
+    const poolData = await program.account.poolAccount.fetch(poolAccount.publicKey);
+    expect(poolData.solBalance.toNumber()).to.equal(solAmount + depositAmount - withdrawAmount);
+    console.log("Test passed: SOL successfully withdrawn from the pool.");
+
+    // Check the balance of the poolSolAccount
+    const poolSolBalance = await connection.getBalance(poolSolAccount);
+    const expectedBalance = solAmount + depositAmount - withdrawAmount;
+    expect(poolSolBalance).to.equal(expectedBalance);
+    console.log("Test passed: poolSolAccount balance is correct after withdrawal.");
+  });
+
+  it("Checks the balance of poolSolAccount after withdraw", async () => {
+    const poolSolBalance = await connection.getBalance(poolSolAccount);
+    const expectedBalance = solAmount + depositAmount - withdrawAmount;
     expect(poolSolBalance).to.equal(expectedBalance);
     console.log("Test passed: poolSolAccount balance is correct.");
   });

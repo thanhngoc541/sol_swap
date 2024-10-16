@@ -53,6 +53,45 @@ pub mod sol_pool {
         msg!("Deposited {} lamports of SOL into the pool", sol_amount);
         Ok(())
     }
+
+    pub fn withdraw_sol(ctx: Context<WithdrawSol>, sol_amount: u64) -> Result<()> {
+        msg!("Withdrawing SOL from the pool");
+
+        // Ensure the pool has enough SOL to fulfill the withdrawal
+        if ctx.accounts.pool_account.sol_balance < sol_amount {
+            msg!(
+                "Insufficient funds: Available {}, Requested {}",
+                ctx.accounts.pool_account.sol_balance,
+                sol_amount
+            );
+            return Err(ErrorCode::InsufficientFunds.into());
+        }
+
+        // Transfer SOL from the pool's PDA to the user
+        let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.pool_sol_account.key(),
+            &ctx.accounts.user.key(),
+            sol_amount,
+        );
+        anchor_lang::solana_program::program::invoke_signed(
+            &transfer_instruction,
+            &[
+                ctx.accounts.pool_sol_account.to_account_info(),
+                ctx.accounts.user.to_account_info(),
+            ],
+            &[&[
+                b"pool_sol_account",
+                ctx.accounts.user.key().as_ref(),
+                &[ctx.bumps.pool_sol_account],
+            ]],
+        )?;
+
+        // Update the pool balance
+        ctx.accounts.pool_account.sol_balance -= sol_amount;
+
+        msg!("Withdrew {} lamports of SOL from the pool", sol_amount);
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -91,7 +130,29 @@ pub struct DepositSol<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct WithdrawSol<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(mut)]
+    pub pool_account: Account<'info, PoolAccount>,
+    /// CHECK: We are auto-verifying this PDA with seeds and bump
+    #[account(
+        mut,
+        seeds = [b"pool_sol_account", user.key().as_ref()],
+        bump
+    )]
+    pub pool_sol_account: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 #[account]
 pub struct PoolAccount {
     pub sol_balance: u64,
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Insufficient funds in the pool.")]
+    InsufficientFunds,
 }
